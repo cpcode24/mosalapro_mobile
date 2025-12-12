@@ -1,6 +1,7 @@
 /**
  * Notifications Redux Slice
  * Manages notifications and messaging
+ * Author: Constant Pagoui
  */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiService from '../../services/api';
