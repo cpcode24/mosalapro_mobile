@@ -1,6 +1,7 @@
 /**
  * Bookings Redux Slice
  * Manages user bookings and appointments
+ * Author: Constant Pagoui
  */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiService from '../../services/api';
