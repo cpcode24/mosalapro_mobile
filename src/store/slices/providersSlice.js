@@ -1,6 +1,7 @@
 /**
  * Providers Redux Slice
  * Manages service providers data and search
+ * Author: Constant Pagoui
  */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiService from '../../services/api';
