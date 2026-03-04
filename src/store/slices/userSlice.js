@@ -1,16 +1,18 @@
 /**
  * User Redux Slice
  * Manages user profile and preferences
+ * Author: Constant Pagoui
  */
+
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiService from '../../services/api';
 
 // Async thunks
 export const fetchUserProfile = createAsyncThunk(
   'user/fetchUserProfile',
-  async (userId, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await apiService.getUserProfile(userId);
+      const response = await apiService.getCurrentUser();
       return response;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to fetch user profile');
@@ -22,7 +24,7 @@ export const updateUserProfile = createAsyncThunk(
   'user/updateUserProfile',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await apiService.updateUserProfile(userData);
+      const response = await apiService.updateProfile(userData);
       return response;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to update profile');
@@ -34,7 +36,7 @@ export const uploadUserAvatar = createAsyncThunk(
   'user/uploadUserAvatar',
   async (avatarData, { rejectWithValue }) => {
     try {
-      const response = await apiService.uploadAvatar(avatarData);
+      const response = await apiService.uploadProfilePhoto(avatarData);
       return response;
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to upload avatar');
