@@ -5,14 +5,15 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  selectIsAuthenticated, 
-  selectCurrentUser, 
+import apiService from '../services/api';
+import {
+  selectIsAuthenticated,
+  selectCurrentUser,
   selectAuthLoading,
   selectIsInitialized,
   setAuthData,
   clearAuthData,
-  setInitialized 
+  setInitialized
 } from '../store/slices/authSlice';
 
 const AuthContext = createContext();
@@ -70,8 +71,9 @@ const AuthProvider = ({ children }) => {
 
   const validateToken = async (token) => {
     try {
-      // Make API call to validate token
-      // For now, return true (implement actual validation)
+      // Validate token by attempting to fetch current user
+      // This will fail if token is invalid
+      await apiService.getCurrentUser();
       return true;
     } catch (error) {
       console.error('Token validation error:', error);
@@ -79,12 +81,18 @@ const AuthProvider = ({ children }) => {
     }
   };
 
-  const storeAuthData = async (token, userData) => {
+  const storeAuthData = async (token, userData, refreshToken = null) => {
     try {
-      await Promise.all([
+      const items = [
         AsyncStorage.setItem('auth_token', token),
         AsyncStorage.setItem('user_data', JSON.stringify(userData)),
-      ]);
+      ];
+
+      if (refreshToken) {
+        items.push(AsyncStorage.setItem('refresh_token', refreshToken));
+      }
+
+      await Promise.all(items);
     } catch (error) {
       console.error('Error storing auth data:', error);
     }
@@ -95,6 +103,7 @@ const AuthProvider = ({ children }) => {
       await Promise.all([
         AsyncStorage.removeItem('auth_token'),
         AsyncStorage.removeItem('user_data'),
+        AsyncStorage.removeItem('refresh_token'),
       ]);
     } catch (error) {
       console.error('Error clearing auth data:', error);
@@ -104,32 +113,18 @@ const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       // API call to login
-      // const response = await authAPI.login(credentials);
-      
-      // Mock response for now
-      const mockResponse = {
-        token: 'mock_jwt_token',
-        user: {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: credentials.email,
-          accountType: 'customer',
-          phone: '+1234567890',
-          isVerified: true,
-        }
-      };
+      const response = await apiService.login(credentials);
 
-      // Store auth data
-      await storeAuthData(mockResponse.token, mockResponse.user);
-      
+      // Store auth data including refresh token if provided
+      await storeAuthData(response.token, response.user, response.refreshToken);
+
       // Update Redux state
       dispatch(setAuthData({
-        token: mockResponse.token,
-        user: mockResponse.user,
+        token: response.token,
+        user: response.user,
       }));
 
-      return mockResponse;
+      return response;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -138,35 +133,21 @@ const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      // API call to register
-      // const response = await authAPI.register(userData);
-      
-      // Mock response for now
-      const mockResponse = {
-        token: 'mock_jwt_token',
-        user: {
-          id: '2',
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          email: userData.email,
-          accountType: userData.userType,
-          phone: userData.phone,
-          isVerified: false,
-          businessName: userData.businessName,
-          serviceCategory: userData.serviceCategory,
-        }
-      };
+      // API call to register - use registerProvider for service providers
+      const response = userData.userType === 'provider' || userData.accountType === 'provider'
+        ? await apiService.registerProvider(userData)
+        : await apiService.register(userData);
 
-      // Store auth data
-      await storeAuthData(mockResponse.token, mockResponse.user);
-      
+      // Store auth data including refresh token if provided
+      await storeAuthData(response.token, response.user, response.refreshToken);
+
       // Update Redux state
       dispatch(setAuthData({
-        token: mockResponse.token,
-        user: mockResponse.user,
+        token: response.token,
+        user: response.user,
       }));
 
-      return mockResponse;
+      return response;
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -175,12 +156,9 @@ const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // API call to logout (if needed)
-      // await authAPI.logout();
-      
-      // Clear stored data
-      await clearStoredAuthData();
-      
+      // API call to logout - apiService handles clearing local data
+      await apiService.logout();
+
       // Clear Redux state
       dispatch(clearAuthData());
     } catch (error) {
@@ -193,15 +171,15 @@ const AuthProvider = ({ children }) => {
 
   const updateUser = async (updates) => {
     try {
-      // API call to update user
-      // const response = await authAPI.updateUser(updates);
-      
-      // Mock response for now
-      const updatedUser = { ...currentUser, ...updates };
-      
+      // API call to update user profile
+      const response = await apiService.updateProfile(updates);
+
+      // Get updated user data from response
+      const updatedUser = response.user || response;
+
       // Update stored data
       await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
-      
+
       // Update Redux state
       dispatch(setAuthData({
         token: await AsyncStorage.getItem('auth_token'),
@@ -217,19 +195,13 @@ const AuthProvider = ({ children }) => {
 
   const refreshToken = async () => {
     try {
-      const currentToken = await AsyncStorage.getItem('auth_token');
-      if (!currentToken) return null;
+      const refreshToken = await AsyncStorage.getItem('refresh_token');
+      if (!refreshToken) return null;
 
-      // API call to refresh token
-      // const response = await authAPI.refreshToken(currentToken);
-      
-      // Mock response for now
-      const newToken = 'new_mock_jwt_token';
-      
-      // Update stored token
-      await AsyncStorage.setItem('auth_token', newToken);
-      
-      // Update Redux state
+      // API call to refresh token - apiService handles storing new tokens
+      const newToken = await apiService.refreshToken(refreshToken);
+
+      // Update Redux state with new token
       dispatch(setAuthData({
         token: newToken,
         user: currentUser,
