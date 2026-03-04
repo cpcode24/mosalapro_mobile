@@ -1,4 +1,12 @@
 {
   "name": "mosalapro-mobile",
-  "displayName": "MosalaPro Mobile"
+  "displayName": "MosalaPro Mobile",
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "6f5821f6-7e51-45fc-ac95-6f65eb28c490"
+      }
+    }
+  }
 }
+
